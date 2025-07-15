@@ -1,7 +1,8 @@
+'use client'
 // app/dashboard/page.tsx
 import { getDocs, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { auth } from '@/lib/firebase';
+import { db } from '../../../lib/firebase';
+import { auth } from '../../../lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 
