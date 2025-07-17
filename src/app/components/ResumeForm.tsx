@@ -1,9 +1,11 @@
-// src/components/ResumeForm.tsx
+// UPDATED: Added predictive features
 'use client';
 
-import { useState } from 'react';
-import { ResumeSubmission, FormState } from '../types';
+import { useState, useEffect } from 'react';
+import {Submission, FormState } from '../types';
 import { resumeService } from '../../services/resumeService';
+import { getEmergingSkills, generatePredictiveResume } from '@/services/predictiveService'; // Added
+import { EmergingSkill } from '@/services/predictiveService'; // Added
 
 export default function ResumeForm() {
   const [formState, setFormState] = useState<FormState>({
@@ -11,6 +13,21 @@ export default function ResumeForm() {
     error: null,
     success: false
   });
+  
+  const [industry, setIndustry] = useState('');
+  const [targetRole, setTargetRole] = useState('');
+  const [emergingSkills, setEmergingSkills] = useState<EmergingSkill[]>([]);
+
+  // Fetch emerging skills when industry changes
+  useEffect(() => {
+    if (industry.trim() !== '') {
+      getEmergingSkills(industry).then(skills => {
+        setEmergingSkills(skills);
+      });
+    } else {
+      setEmergingSkills([]);
+    }
+  }, [industry]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,16 +44,22 @@ export default function ResumeForm() {
         throw new Error('Please enter a valid resume URL');
       }
 
-      await resumeService.submitResume({
+      // Create submission object
+      const submissionData = {
         name: formData.get('name') as string,
         email: formData.get('email') as string,
         targetRole: formData.get('targetRole') as string,
-        experienceLevel: formData.get('experienceLevel') as ResumeSubmission['experienceLevel'],
+        experienceLevel: formData.get('experienceLevel') as Submission['experienceLevel'],
         industry: formData.get('industry') as string,
         jobDescription: formData.get('jobDescription') as string,
         resumeUrl,
         status: 'pending'
-      });
+      };
+
+      //  Generate predictive resume
+      const predictiveResume = await generatePredictiveResume(submissionData);
+
+      await resumeService.submitResume(predictiveResume);
 
       setFormState({
         isSubmitting: false,
@@ -44,6 +67,8 @@ export default function ResumeForm() {
         success: true
       });
       e.currentTarget.reset();
+      setIndustry('');
+      setTargetRole('');
 
     } catch (error) {
       setFormState({
@@ -59,55 +84,11 @@ export default function ResumeForm() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-white shadow-lg rounded-lg p-6 md:p-8">
-        {formState.success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex items-center">
-            <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-            </svg>
-            Resume submitted successfully! We will review it soon.
-          </div>
-        )}
-
-        {formState.error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {formState.error.message}
-          </div>
-        )}
-
+        
+        
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Personal Information */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
-            
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                placeholder="John Doe"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                placeholder="john@example.com"
-              />
-            </div>
-          </div>
-
+          {/* Personal Information  */}
+          
           {/* Professional Information */}
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-gray-800">Professional Information</h2>
@@ -121,6 +102,8 @@ export default function ResumeForm() {
                 id="targetRole"
                 name="targetRole"
                 required
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
                 placeholder="Software Engineer"
               />
@@ -153,51 +136,38 @@ export default function ResumeForm() {
                 id="industry"
                 name="industry"
                 required
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
                 placeholder="Technology, Healthcare, Finance, etc."
               />
             </div>
+            
+            {/* Emerging Skills Section */}
+            {emergingSkills.length > 0 && (
+              <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <h3 className="font-semibold text-orange-800">
+                  🔮 Emerging Skills in {industry}
+                </h3>
+                <p className="text-sm text-orange-600 mb-2">
+                  Consider adding these skills to your resume to future-proof your career:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {emergingSkills.map(skill => (
+                    <span 
+                      key={skill.id} 
+                      className="px-3 py-1 bg-white text-orange-700 text-sm font-medium rounded-full border border-orange-200"
+                    >
+                      {skill.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Resume Information */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">Resume Information</h2>
-
-            <div>
-              <label htmlFor="resumeUrl" className="block text-sm font-medium text-gray-700">
-                Resume URL *
-              </label>
-              <input
-                type="url"
-                id="resumeUrl"
-                name="resumeUrl"
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                placeholder="https://drive.google.com/..."
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Please provide a public link to your resume (Google Drive, Dropbox, etc.)
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="jobDescription" className="block text-sm font-medium text-gray-700">
-                Target Job Description *
-              </label>
-              <textarea
-                id="jobDescription"
-                name="jobDescription"
-                rows={4}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                placeholder="Paste the job description you're targeting..."
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                This helps us tailor your resume to the specific role
-              </p>
-            </div>
-          </div>
-
+          {/* Resume Information*/}
+          
           <div className="pt-4">
             <button
               type="submit"
@@ -210,10 +180,10 @@ export default function ResumeForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Submitting...
+                  Generating Predictive Analysis...
                 </span>
               ) : (
-                'Submit Resume for Review'
+                'Future-Proof My Resume'
               )}
             </button>
           </div>

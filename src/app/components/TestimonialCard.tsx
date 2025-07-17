@@ -2,6 +2,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export default function TestimonialCard({ 
   name, 
@@ -25,9 +26,11 @@ export default function TestimonialCard({
       <div className="flex items-center mb-4">
         <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-orange-500 to-red-600 p-0.5">
           <div className="bg-white dark:bg-gray-800 rounded-full p-0.5">
-            <img 
+            <Image 
               src={avatar} 
               alt={name} 
+              width={48}
+              height={48}
               className="rounded-full w-full h-full object-cover"
             />
           </div>
@@ -45,7 +48,7 @@ export default function TestimonialCard({
         ))}
       </div>
       <blockquote className="text-gray-700 dark:text-gray-300 italic">
-        "{content}"
+        &quot;{content}&quot;
       </blockquote>
     </motion.div>
   );

@@ -1,4 +1,4 @@
-export interface ResumeSubmission {
+export interface Submission {
   id?: string;
   name: string;
   email: string;

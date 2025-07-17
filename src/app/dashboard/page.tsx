@@ -1,133 +1,93 @@
-'use client'
-// app/dashboard/page.tsx
-import { getDocs, collection } from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
-import { auth } from '../../../lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useAuth } from '../../../lib/auth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Dashboard() {
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      setUser(user);
-      setLoading(false);
-      if (user) fetchSubmissions();
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const fetchSubmissions = async () => {
-    const snapshot = await getDocs(collection(db, 'submissions'));
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setSubmissions(data);
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Invalid credentials');
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
     }
-  };
+  }, [isAuthenticated, isLoading, router]);
 
-  if (loading) return <div>Loading...</div>;
-
-  if (!user) {
+  if (isLoading) {
     return (
-      <div className="max-w-md mx-auto py-12">
-        <h1 className="text-2xl font-bold mb-6">Admin Login</h1>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <button 
-            type="submit"
-            className="bg-orange-500 text-white py-2 px-4 rounded hover:bg-orange-600 transition"
-          >
-            Login
-          </button>
-        </form>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600"></div>
       </div>
     );
   }
 
+  if (!isAuthenticated) {
+    return null; // Will redirect to login
+  }
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Submissions</h1>
-        <button 
-          onClick={() => auth.signOut()}
-          className="text-orange-500 hover:underline"
-        >
-          Sign Out
-        </button>
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-          <thead className="bg-gray-100 dark:bg-gray-700">
-            <tr>
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Email</th>
-              <th className="py-3 px-4 text-left">Target Role</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {submissions.map((submission) => (
-              <tr key={submission.id} className="border-b border-gray-200 dark:border-gray-700">
-                <td className="py-3 px-4">{submission.name}</td>
-                <td className="py-3 px-4">{submission.email}</td>
-                <td className="py-3 px-4">{submission.targetRole}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    submission.status === 'completed' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-orange-100 text-orange-800'
-                  }`}>
-                    {submission.status}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <a 
-                    href={submission.resumeUrl} 
-                    target="_blank"
-                    className="text-orange-500 hover:underline"
-                  >
-                    View Resume
-                  </a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="max-w-4xl mx-auto">
+      <div className="bg-white shadow-xl rounded-xl p-8">
+        <h1 className="text-3xl font-bold text-orange-600 mb-6">
+          Welcome to your Dashboard, {user?.name}!
+        </h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Resume Upload Card */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-orange-800 mb-3">
+              Upload Resume
+            </h2>
+            <p className="text-orange-600 mb-4">
+              Upload your resume to get started with optimization
+            </p>
+            <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md transition-colors">
+              Upload Resume
+            </button>
+          </div>
+
+          {/* Recent Resumes Card */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-blue-800 mb-3">
+              Recent Resumes
+            </h2>
+            <p className="text-blue-600 mb-4">
+              View and manage your uploaded resumes
+            </p>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+              View Resumes
+            </button>
+          </div>
+
+          {/* Analytics Card */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-green-800 mb-3">
+              Analytics
+            </h2>
+            <p className="text-green-600 mb-4">
+              Track your resume optimization progress
+            </p>
+            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors">
+              View Analytics
+            </button>
+          </div>
+        </div>
+
+        {/* User Info Section */}
+        <div className="mt-8 bg-gray-50 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Account Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <p className="mt-1 text-sm text-gray-900">{user?.name}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <p className="mt-1 text-sm text-gray-900">{user?.email}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
